@@ -9,6 +9,8 @@ const basicAuth = require('basic-auth')
 
 const plugin = require('./plugin')
 
+const VER_SUFFIX = '_ver_'
+
 function validateAuth (ctx, users) {
   const auth = basicAuth(ctx)
   // check the auth
@@ -34,8 +36,8 @@ function decomposePath (httpPath) {
       var i = s.indexOf(':')
       if (i > 0) {
         modifiers.push({
-          name: s.substring(0, i),
-          options: s.substring(i + 1).split(',').filter(s => s.length > 0)
+          key: s.substring(0, i),
+          option: s.substring(i + 1)
         })
       } else {
         components.push(s)
@@ -45,6 +47,17 @@ function decomposePath (httpPath) {
     httpPath: path.join(...components),
     modifiers: modifiers
   }
+}
+
+function modifiersToDigest (modifiers) {
+  var str = VER_SUFFIX
+  modifiers.forEach(({key, option}) => {
+    str += key
+    str += '_'
+    str += option
+    str += '_'
+  })
+  return str
 }
 
 async function sendFile (ctx, base, httpPath) {
@@ -72,27 +85,75 @@ module.exports = ({storage, users}) => {
   }
   return async (ctx, next) => {
     const {modifiers, httpPath} = decomposePath(ctx.path)
+    const fullPath = path.join(storage, httpPath)
+    const ext = path.extname(httpPath)
 
     if (ctx.method === 'GET') {
-      // serve the static file
-      if (!await sendFile(ctx, storage, httpPath)) { await next() }
+      if (modifiers.length === 0) {
+        // serve the static file
+        if (!await sendFile(ctx, storage, httpPath)) {
+          await next()
+        }
+      } else {
+        // original file
+        // check original file exists
+        if (!await fs.pathExists(fullPath)) {
+          ctx.throw(404)
+        }
+        // versioned file
+        const suffix = modifiersToDigest(modifiers)
+        const suffixedPath = path.join(
+          path.dirname(httpPath),
+          path.basename(httpPath, ext) + suffix + ext
+        )
+        const suffixedFullPath = path.join(storage, suffixedPath)
+        // check version exists
+        if (!await fs.pathExists(suffixedFullPath)) {
+          // copy tempFile
+          const tempFile = tempy.file({extension: ext})
+          await fs.copy(fullPath, tempFile, {overwrite: true})
+          const pCtx = {
+            file: tempFile
+          }
+          await plugin.runTransformer(modifiers, pCtx)
+          await fs.move(pCtx.file, suffixedFullPath, {overwrite: true})
+          if (!await sendFile(ctx, storage, suffixedPath)) {
+            ctx.throw(500, 'fialed to create version')
+          }
+        } else {
+          if (!await sendFile(ctx, storage, suffixedPath)) {
+            await next()
+          }
+        }
+      }
     } else if (ctx.method === 'PUT') {
       // validate the authentication
       validateAuth(ctx, users)
       // upload the file
-      const tempFile = tempy.file({extension: path.extname(httpPath)})
+      const tempFile = tempy.file({extension: ext})
+      await fs.ensureDir(path.dirname(tempFile))
       await promisePipe(ctx.req, fs.createWriteStream(tempFile))
-      console.log('file uploaded to:', tempFile)
       // execute the afterUpload plugins
       const pCtx = {
         file: tempFile
       }
       await plugin.runAfterUpload(pCtx)
-      // move file to targetPath
-      const targetPath = path.join(storage, httpPath)
-      await fs.ensureDir(path.dirname(targetPath))
-      await fs.move(pCtx.file, targetPath, {overwrite: true})
-      console.log('file moved from', pCtx.file, 'to', targetPath)
+      // move file to fullPath
+      await fs.move(pCtx.file, fullPath, {overwrite: true})
+      // delete versions
+      const dirname = path.dirname(fullPath)
+      const basename = path.basename(fullPath, ext)
+      const list = await fs.readdir(dirname)
+      for (var i = 0; i < list.length; i++) {
+        const n = list[i]
+        if (n.startsWith(basename + VER_SUFFIX)) {
+          try {
+            await fs.unlink(path.join(dirname, n))
+          } catch (e) {
+            console.log(`failed to delete ${n}`)
+          }
+        }
+      }
       ctx.status = 200
       ctx.body = 'OK'
     }

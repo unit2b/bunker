@@ -9,3 +9,32 @@
 ```
 
 * `file` file to process, extension name is properly set
+
+## AfterUpload Processors
+
+```javascript
+{
+  name: 'trimProfile',
+  testFn: (ctx) => {
+    return path.extname(ctx.file) == '.png'
+  },
+  fn: async (ctx) => {
+    // ...
+  }
+}
+```
+
+## Version Processors
+
+```javascript
+{
+  name: 'trimProfile',
+  key: 'w',
+  testFn: (ctx) => {
+    return path.extname(ctx.file) == '.png'
+  },
+  fn: async (option, ctx) => {
+    // ...
+  }
+}
+```

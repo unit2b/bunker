@@ -5,7 +5,7 @@ const gm = require('gm')
 const tempy = require('tempy')
 const fs = require('fs-extra')
 
-plugin.afterUpload.push({
+plugin.registerAfterUpload({
   name: 'trimProfile',
   testFn: (ctx) => {
     return ['.png', '.jpg'].includes(path.extname(ctx.file).toLowerCase())
