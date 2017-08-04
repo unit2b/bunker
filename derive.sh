@@ -3,4 +3,4 @@
 set -e
 set -u
 
-curl --head https://$BUNKER_USER:$BUNKER_PASS@$BUNKER_HOST$1
+curl https://$BUNKER_USER:$BUNKER_PASS@$BUNKER_HOST$1 > /dev/null

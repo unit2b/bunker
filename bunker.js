@@ -113,37 +113,28 @@ module.exports = ({storage, users}) => {
         ctx.body = 'YoRHa Bunker System by Unit.2B\n\nhttps://github.com/unit2b/bunker'
       } else {
         if (!await sendFile(ctx, storage, httpPath)) {
-          await next()
-        }
-      }
-    } else if (ctx.method === 'HEAD') {
-      // check file
-      const fullPath = path.join(storage, httpPath)
-      const exits = await fs.pathExists(fullPath)
-      if (exits) {
-        // if exists, just 200
-        ctx.status = 200
-      } else {
-        if (modifiers.length === 0) {
-          // if not exists, and no version specified, just next()
-          await next()
-        } else {
-          // else try create a version
-          const basicFullPath = path.join(storage, basicPath)
-          if (!await fs.pathExists(basicFullPath)) {
+          if (modifiers.length === 0) {
             await next()
           } else {
-            // validate the authentication
-            validateAuth(ctx, users)
-            // copy file
-            const file = tempy.file({extension: ext})
-            await fs.copy(basicFullPath, file, {overwrite: true})
-            // run transformers
-            const pctx = {file: file}
-            await plugin.runTransformer(modifiers, pctx)
-            await fs.move(pctx.file, fullPath, {overwrite: true})
-            // just 200
-            ctx.status = 200
+            const fullPath = path.join(storage, httpPath)
+            // else try create a version
+            const basicFullPath = path.join(storage, basicPath)
+            if (!await fs.pathExists(basicFullPath)) {
+              await next()
+            } else {
+              // validate the authentication
+              validateAuth(ctx, users)
+              // copy file
+              const file = tempy.file({extension: ext})
+              await fs.copy(basicFullPath, file, {overwrite: true})
+              // run transformers
+              const pctx = {file: file}
+              await plugin.runTransformer(modifiers, pctx)
+              await fs.move(pctx.file, fullPath, {overwrite: true})
+              if (!await sendFile(ctx, storage, httpPath)) {
+                ctx.throw(500, 'failed to create version')
+              }
+            }
           }
         }
       }
