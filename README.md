@@ -22,6 +22,10 @@ Simple file hosting server
 
 ## Version
 
-### Create / Fetch
+### Create
+
+`curl https://username:password@bunker.example.com/2017-08-01/w:10/cover.jpg`
+
+### Fetch
 
 `curl https://bunker.example.com/2017-08-01/w:10/cover.jpg`
