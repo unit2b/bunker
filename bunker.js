@@ -11,18 +11,18 @@ const plugin = require('./plugin')
 
 const VER_SUFFIX = '_ver_'
 
-function validateAuth (ctx, users) {
+function validateAuth (ctx, users, code = 403) {
   const auth = basicAuth(ctx)
   // check the auth
   if (auth == null) {
-    ctx.throw(403, 'basic auth failed')
+    ctx.throw(code)
   }
   var found = false
   users.forEach(u => {
     if (u.name === auth.name && u.pass === auth.pass) { found = true }
   })
   if (!found) {
-    ctx.throw(403, 'basic auth failed')
+    ctx.throw(code)
   }
 }
 
@@ -123,7 +123,7 @@ module.exports = ({storage, users}) => {
               await next()
             } else {
               // validate the authentication
-              validateAuth(ctx, users)
+              validateAuth(ctx, users, 404)
               // copy file
               const file = tempy.file({extension: ext})
               await fs.copy(basicFullPath, file, {overwrite: true})
@@ -132,7 +132,7 @@ module.exports = ({storage, users}) => {
               await plugin.runTransformer(modifiers, pctx)
               await fs.move(pctx.file, fullPath, {overwrite: true})
               if (!await sendFile(ctx, storage, httpPath)) {
-                ctx.throw(500, 'failed to create version')
+                ctx.throw(500)
               }
             }
           }
