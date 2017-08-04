@@ -26,6 +26,20 @@ function validateAuth (ctx, users) {
   }
 }
 
+function modifiersToDigest (modifiers) {
+  if (modifiers.length === 0) {
+    return ''
+  }
+  var str = VER_SUFFIX
+  modifiers.forEach(({key, option}) => {
+    str += key
+    str += '_'
+    str += option
+    str += '_'
+  })
+  return str
+}
+
 function decomposePath (httpPath) {
   const modifiers = []
   const components = []
@@ -43,21 +57,22 @@ function decomposePath (httpPath) {
         components.push(s)
       }
     })
-  return {
-    httpPath: path.join(...components),
+  const result = {
+    basicPath: path.join(...components),
+    ext: path.extname(httpPath),
     modifiers: modifiers
   }
-}
-
-function modifiersToDigest (modifiers) {
-  var str = VER_SUFFIX
-  modifiers.forEach(({key, option}) => {
-    str += key
-    str += '_'
-    str += option
-    str += '_'
-  })
-  return str
+  if (result.modifiers.length === 0) {
+    result.httpPath = result.basicPath
+  } else {
+    result.httpPath = path.join(
+      path.dirname(result.basicPath),
+      path.basename(result.basicPath, result.ext) +
+      modifiersToDigest(result.modifiers) +
+      result.ext
+    )
+  }
+  return result
 }
 
 async function sendFile (ctx, base, httpPath) {
@@ -85,66 +100,66 @@ module.exports = ({storage, users}) => {
     throw new Error('Flow() "users" not set')
   }
   return async (ctx, next) => {
-    const {modifiers, httpPath} = decomposePath(ctx.path)
-    const fullPath = path.join(storage, httpPath)
-    const ext = path.extname(httpPath)
+    const {
+      modifiers,
+      httpPath,
+      basicPath,
+      ext
+    } = decomposePath(ctx.path)
 
     if (ctx.method === 'GET') {
+      // serve the file
       if (ctx.path === '/') {
         ctx.body = 'YoRHa Bunker System by Unit.2B\n\nhttps://github.com/unit2b/bunker'
-        return
-      }
-      if (modifiers.length === 0) {
-        // serve the static file
+      } else {
         if (!await sendFile(ctx, storage, httpPath)) {
           await next()
         }
+      }
+    } else if (ctx.method === 'HEAD') {
+      // check file
+      const fullPath = path.join(storage, httpPath)
+      const exits = await fs.pathExists(fullPath)
+      if (exits) {
+        // if exists, just 200
+        ctx.status = 200
       } else {
-        // original file
-        // check original file exists
-        if (!await fs.pathExists(fullPath)) {
-          ctx.throw(404)
-        }
-        // versioned file
-        const suffix = modifiersToDigest(modifiers)
-        const suffixedPath = path.join(
-          path.dirname(httpPath),
-          path.basename(httpPath, ext) + suffix + ext
-        )
-        const suffixedFullPath = path.join(storage, suffixedPath)
-        // check version exists
-        if (!await fs.pathExists(suffixedFullPath)) {
-          // copy tempFile
-          const tempFile = tempy.file({extension: ext})
-          await fs.copy(fullPath, tempFile, {overwrite: true})
-          const pCtx = {
-            file: tempFile
-          }
-          await plugin.runTransformer(modifiers, pCtx)
-          await fs.move(pCtx.file, suffixedFullPath, {overwrite: true})
-          if (!await sendFile(ctx, storage, suffixedPath)) {
-            ctx.throw(500, 'fialed to create version')
-          }
+        if (modifiers.length === 0) {
+          // if not exists, and no version specified, just next()
+          await next()
         } else {
-          if (!await sendFile(ctx, storage, suffixedPath)) {
+          // else try create a version
+          const basicFullPath = path.join(storage, basicPath)
+          if (!await fs.pathExists(basicFullPath)) {
             await next()
+          } else {
+            // validate the authentication
+            validateAuth(ctx, users)
+            // copy file
+            const file = tempy.file({extension: ext})
+            await fs.copy(basicFullPath, file, {overwrite: true})
+            // run transformers
+            const pctx = {file: file}
+            await plugin.runTransformer(modifiers, pctx)
+            await fs.move(pctx.file, fullPath, {overwrite: true})
+            // just 200
+            ctx.status = 200
           }
         }
       }
     } else if (ctx.method === 'PUT') {
+      const basicFullPath = path.join(storage, basicPath)
       // validate the authentication
       validateAuth(ctx, users)
       // upload the file
-      const tempFile = tempy.file({extension: ext})
-      await fs.ensureDir(path.dirname(tempFile))
-      await promisePipe(ctx.req, fs.createWriteStream(tempFile))
+      const file = tempy.file({extension: ext})
+      await fs.ensureDir(path.dirname(file))
+      await promisePipe(ctx.req, fs.createWriteStream(file))
       // execute the afterUpload plugins
-      const pCtx = {
-        file: tempFile
-      }
-      await plugin.runAfterUpload(pCtx)
+      const pctx = {file: file}
+      await plugin.runAfterUpload(pctx)
       // move file to fullPath
-      await fs.move(pCtx.file, fullPath)
+      await fs.move(pctx.file, basicFullPath)
       ctx.status = 200
       ctx.body = 'OK'
     }
