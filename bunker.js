@@ -144,21 +144,7 @@ module.exports = ({storage, users}) => {
       }
       await plugin.runAfterUpload(pCtx)
       // move file to fullPath
-      await fs.move(pCtx.file, fullPath, {overwrite: true})
-      // delete versions
-      const dirname = path.dirname(fullPath)
-      const basename = path.basename(fullPath, ext)
-      const list = await fs.readdir(dirname)
-      for (var i = 0; i < list.length; i++) {
-        const n = list[i]
-        if (n.startsWith(basename + VER_SUFFIX)) {
-          try {
-            await fs.unlink(path.join(dirname, n))
-          } catch (e) {
-            console.log(`failed to delete ${n}`)
-          }
-        }
-      }
+      await fs.move(pCtx.file, fullPath)
       ctx.status = 200
       ctx.body = 'OK'
     }
