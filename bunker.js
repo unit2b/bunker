@@ -65,8 +65,9 @@ async function sendFile (ctx, base, httpPath) {
   try {
     done = await koaSend(ctx, httpPath, {
       root: base,
-      maxage: 365 * 24 * 60 * 1000,
-      immutable: true
+      setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'public, max-age=525600, immutable')
+      }
     })
   } catch (e) {
     if (e.status !== 404) {
