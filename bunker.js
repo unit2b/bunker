@@ -90,6 +90,10 @@ module.exports = ({storage, users}) => {
     const ext = path.extname(httpPath)
 
     if (ctx.method === 'GET') {
+      if (ctx.path === '/') {
+        ctx.body = 'YoRHa Bunker System by Unit.2B\n\nhttps://github.com/unit2b/bunker'
+        return
+      }
       if (modifiers.length === 0) {
         // serve the static file
         if (!await sendFile(ctx, storage, httpPath)) {
