@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/unit2b/bunker#readme",
   "dependencies": {
+    "basic-auth": "^1.1.0",
     "fs-extra": "^4.0.1",
     "koa": "^2.3.0",
     "koa-send": "^4.1.0",

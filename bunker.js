@@ -4,6 +4,22 @@ const fs = require('fs-extra')
 const _ = require('lodash')
 const koaSend = require('koa-send')
 const promisePipe = require('promisepipe')
+const basicAuth = require('basic-auth')
+
+function validateAuth (ctx, users) {
+  const auth = basicAuth(ctx)
+  // check the auth
+  if (auth == null) {
+    ctx.throw(403, 'basic auth failed')
+  }
+  var found = false
+  users.forEach(u => {
+    if (u.name === auth.name && u.pass === auth.pass) { found = true }
+  })
+  if (!found) {
+    ctx.throw(403, 'basic auth failed')
+  }
+}
 
 function decomposePath (httpPath) {
   const modifiers = []
@@ -58,6 +74,8 @@ module.exports = ({storage, users}) => {
       // serve the static file
       if (!await sendFile(ctx, storage, httpPath)) { await next() }
     } else if (ctx.method === 'PUT') {
+      // validate the authentication
+      validateAuth(ctx, users)
       // upload the file
       const fullPath = path.join(storage, httpPath)
       await fs.ensureDir(path.dirname(fullPath))
