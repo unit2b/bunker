@@ -1,0 +1,38 @@
+{
+  "name": "bunker",
+  "version": "1.0.0",
+  "description": "simple file hosting service",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/unit2b/bunker.git"
+  },
+  "keywords": [
+    "file",
+    "hosting",
+    "image"
+  ],
+  "author": "YoRHa No.2 Type B",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/unit2b/bunker/issues"
+  },
+  "homepage": "https://github.com/unit2b/bunker#readme",
+  "dependencies": {
+    "fs-extra": "^4.0.1",
+    "koa": "^2.3.0",
+    "koa-send": "^4.1.0",
+    "lodash": "^4.17.4",
+    "promisepipe": "^2.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^4.3.0",
+    "eslint-plugin-node": "^5.1.1",
+    "eslint-plugin-promise": "^3.5.0",
+    "eslint-plugin-standard": "^3.0.1"
+  }
+}
