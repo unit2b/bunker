@@ -1,10 +1,13 @@
 const path = require('path')
 
+const tempy = require('tempy')
 const fs = require('fs-extra')
 const _ = require('lodash')
 const koaSend = require('koa-send')
 const promisePipe = require('promisepipe')
 const basicAuth = require('basic-auth')
+
+const plugin = require('./plugin')
 
 function validateAuth (ctx, users) {
   const auth = basicAuth(ctx)
@@ -77,9 +80,19 @@ module.exports = ({storage, users}) => {
       // validate the authentication
       validateAuth(ctx, users)
       // upload the file
-      const fullPath = path.join(storage, httpPath)
-      await fs.ensureDir(path.dirname(fullPath))
-      await promisePipe(ctx.req, fs.createWriteStream(fullPath))
+      const tempFile = tempy.file({extension: path.extname(httpPath)})
+      await promisePipe(ctx.req, fs.createWriteStream(tempFile))
+      console.log('file uploaded to:', tempFile)
+      // execute the afterUpload plugins
+      const pCtx = {
+        file: tempFile
+      }
+      await plugin.runAfterUpload(pCtx)
+      // move file to targetPath
+      const targetPath = path.join(storage, httpPath)
+      await fs.ensureDir(path.dirname(targetPath))
+      await fs.move(pCtx.file, targetPath, {overwrite: true})
+      console.log('file moved from', pCtx.file, 'to', targetPath)
       ctx.status = 200
       ctx.body = 'OK'
     }

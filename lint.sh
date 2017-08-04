@@ -1,3 +1,3 @@
 #!/bin/sh
 
-standard *.js --fix
+standard *.js plugins/*.js --fix
