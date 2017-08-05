@@ -14,6 +14,7 @@
 
 ```javascript
 {
+  order: 0,
   name: 'trimProfile',
   testFn: (ctx) => {
     return path.extname(ctx.file) == '.png'

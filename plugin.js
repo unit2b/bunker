@@ -13,6 +13,13 @@ const plugin = module.exports = {
  * @param pl, { name: 'trimProfile', testFn: (ctx) => {}, fn: async (ctx) => {}}
  */
 plugin.registerAfterUpload = (pl) => {
+  for (var i = 0; i < plugin.afterUploads.length; i++) {
+    const curr = plugin.afterUploads[i]
+    if (curr.order >= pl.order) {
+      plugin.afterUploads.splice(i, 0, pl)
+      return
+    }
+  }
   plugin.afterUploads.push(pl)
 }
 
@@ -29,8 +36,7 @@ plugin.registerTransformer = (pl) => {
  * @param ctx, { file: '/tmp/xxxx.png' }, processor context
  */
 plugin.runAfterUpload = async (ctx) => {
-  for (var i = 0; i < plugin.afterUploads.length; i++) {
-    const p = plugin.afterUploads[i]
+  for (let p of plugin.afterUploads) {
     if (p.testFn(ctx)) {
       await p.fn(ctx)
     }
@@ -43,15 +49,13 @@ plugin.runAfterUpload = async (ctx) => {
  * @param ctx, { file: '/tmp/xxxx.png' }, processor context
  */
 plugin.runTransformer = async (list, ctx) => {
-  for (var i = 0; i < list.length; i++) {
-    const mod = list[i]
-    for (var j = 0; j < plugin.transformers.length; j++) {
-      const t = plugin.transformers[j]
-      if (mod.key === t.key) {
+  for (let m of list) {
+    for (let t of plugin.transformers) {
+      if (m.key === t.key) {
         if (!t.testFn(ctx)) {
           throw new Error(`transformer ${t.name} not fit`)
         }
-        await t.fn(mod.option, ctx)
+        await t.fn(m.option, ctx)
       }
     }
   }
