@@ -1,6 +1,9 @@
 const Koa = require('koa')
-const Bunker = require('./bunker')
+
+const utils = require('./utils')
 const config = require('./config')
+
+const Bunker = require('./bunker')
 
 const app = new Koa()
 
@@ -9,4 +12,6 @@ app.use(Bunker({
   users: config.users
 }))
 
-app.listen(config.port)
+app.listen(config.port, () => {
+  utils.log(`bunker running at ${config.port}`)
+})

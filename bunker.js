@@ -2,12 +2,12 @@ const path = require('path')
 
 const tempy = require('tempy')
 const fs = require('fs-extra')
-const _ = require('lodash')
 const koaSend = require('koa-send')
 const promisePipe = require('promisepipe')
 const basicAuth = require('basic-auth')
 
 const plugin = require('./plugin')
+const utils = require('./utils')
 
 const VER_SUFFIX = '_ver_'
 
@@ -96,7 +96,7 @@ module.exports = ({storage, users}) => {
   if (!storage) {
     throw new Error('Flow() "storage" not set')
   }
-  if (!_.isArray(users)) {
+  if (!Array.isArray(users)) {
     throw new Error('Flow() "users" not set')
   }
   return async (ctx, next) => {
@@ -128,12 +128,13 @@ module.exports = ({storage, users}) => {
               const file = tempy.file({extension: ext})
               await fs.copy(basicFullPath, file, {overwrite: true})
               // run transformers
-              const pctx = {file: file}
+              const pctx = {file: file, originalFile: basicFullPath}
               await plugin.runTransformer(modifiers, pctx)
               await fs.move(pctx.file, fullPath, {overwrite: true})
               if (!await sendFile(ctx, storage, httpPath)) {
                 ctx.throw(500)
               }
+              utils.log(`versioned: ${httpPath}`)
             }
           }
         }
@@ -151,6 +152,7 @@ module.exports = ({storage, users}) => {
       await plugin.runAfterUpload(pctx)
       // move file to fullPath
       await fs.move(pctx.file, basicFullPath)
+      utils.log(` uploaded: ${basicPath}`)
       ctx.status = 200
       ctx.body = 'OK'
     }

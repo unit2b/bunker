@@ -1,6 +1,7 @@
-const _ = require('lodash')
 const fs = require('fs')
 const path = require('path')
+
+const utils = require('./utils')
 
 const plugin = module.exports = {
   afterUploads: [],
@@ -60,15 +61,13 @@ plugin.runTransformer = async (list, ctx) => {
 fs.readdir(path.join(__dirname, './plugins'), (err, files) => {
   if (err) throw err
   // load all plugins
-  _.sortBy(files).forEach(f => {
+  files.sort().forEach(f => {
     if (path.extname(f) === '.js') {
       require('./plugins/' + f)
     }
   })
   // log
-  console.log('avialable plugins:')
-  console.log('  afterUpload:')
-  plugin.afterUploads.forEach(n => console.log(`    - ${n.name}`))
-  console.log('  processors:')
-  plugin.transformers.forEach(n => console.log(`    - ${n.name} (${n.key})`))
+  utils.log('loading plugins')
+  plugin.afterUploads.forEach(n => utils.log(`plugin: afterUpload ${n.name}`))
+  plugin.transformers.forEach(n => utils.log(`plugin: transformer ${n.name} (${n.key})`))
 })
