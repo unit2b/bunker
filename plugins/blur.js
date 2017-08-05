@@ -6,7 +6,8 @@ plugin.registerTransformer({
   key: 'blur',
   testFn: (ctx) => utils.isImageFile(ctx.file),
   fn: async (option, ctx) => {
-    const opts = option.split('-').map(parseInt)
+    const opts = option.split('-').map(e => parseInt(e))
+    utils.debug('blur:', opts)
     ctx.file = await utils.runGM(ctx.file, (m) => m.blur(...opts))
   }
 })

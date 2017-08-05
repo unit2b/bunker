@@ -6,6 +6,10 @@ const tempy = require('tempy')
 
 const utils = module.exports
 
+utils.log = (...s) => console.log(`${new Date().toLocaleString()}`, ...s)
+
+utils.debug = require('debug')('bunker')
+
 utils.matchExtname = (file, ...exts) => {
   return exts.includes(path.extname(file).toLowerCase())
 }
@@ -26,5 +30,3 @@ utils.runGM = (inputFile, fn) => {
     })
   })
 }
-
-utils.log = (...s) => console.log(`${new Date().toLocaleString()}`, ...s)

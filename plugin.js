@@ -55,7 +55,9 @@ plugin.runTransformer = async (list, ctx) => {
         if (!t.testFn(ctx)) {
           throw new Error(`transformer ${t.name} not fit`)
         }
+        utils.debug('plugin start:', t.name)
         await t.fn(m.option, ctx)
+        utils.debug('plugin done:', t.name)
       }
     }
   }

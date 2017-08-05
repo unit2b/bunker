@@ -3,7 +3,7 @@
 set -e
 set -u
 
-curl https://$BUNKER_USER:$BUNKER_PASS@$BUNKER_HOST$1 > /dev/null
+curl -sD - -o /dev/null https://$BUNKER_USER:$BUNKER_PASS@$BUNKER_HOST$1
 
 echo ""
 echo "-----"

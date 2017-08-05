@@ -13,5 +13,6 @@ app.use(Bunker({
 }))
 
 app.listen(config.port, () => {
+  utils.debug('bunker debug enabled')
   utils.log(`bunker running at ${config.port}`)
 })

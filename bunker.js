@@ -13,17 +13,16 @@ const VER_SUFFIX = '_ver_'
 
 function validateAuth (ctx, users, code = 403) {
   const auth = basicAuth(ctx)
-  // check the auth
   if (auth == null) {
     ctx.throw(code)
   }
-  var found = false
-  users.forEach(u => {
-    if (u.name === auth.name && u.pass === auth.pass) { found = true }
-  })
-  if (!found) {
-    ctx.throw(code)
+  for (let u of users) {
+    if (u.name === auth.name && u.pass === auth.pass) {
+      return
+    }
   }
+  utils.debug('invalid auth')
+  ctx.throw(code)
 }
 
 function modifiersToDigest (modifiers) {
@@ -106,6 +105,11 @@ module.exports = ({storage, users}) => {
       basicPath,
       ext
     } = decomposePath(ctx.path)
+    utils.debug('------------------------')
+    utils.debug('modifiers:', modifiers)
+    utils.debug('basicPath:', basicPath)
+    utils.debug('httpPath:', httpPath)
+    utils.debug('ext:', ext)
 
     if (ctx.method === 'GET') {
       // serve the file
@@ -114,12 +118,14 @@ module.exports = ({storage, users}) => {
       } else {
         if (!await sendFile(ctx, storage, httpPath)) {
           if (modifiers.length === 0) {
+            utils.debug('not found', basicPath)
             await next()
           } else {
             const fullPath = path.join(storage, httpPath)
             // else try create a version
             const basicFullPath = path.join(storage, basicPath)
             if (!await fs.pathExists(basicFullPath)) {
+              utils.debug('basic file not found', basicPath)
               await next()
             } else {
               // validate the authentication
