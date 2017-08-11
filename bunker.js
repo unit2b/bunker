@@ -112,36 +112,31 @@ module.exports = ({storage, users}) => {
     utils.debug('ext:', ext)
 
     if (ctx.method === 'GET') {
-      // serve the file
-      if (ctx.path === '/') {
-        ctx.body = 'YoRHa Bunker System by Unit.2B\n\nhttps://github.com/unit2b/bunker'
-      } else {
-        if (!await sendFile(ctx, storage, httpPath)) {
-          if (modifiers.length === 0) {
-            utils.debug('not found', basicPath)
+      if (!await sendFile(ctx, storage, httpPath)) {
+        if (modifiers.length === 0) {
+          utils.debug('not found', basicPath)
+          await next()
+        } else {
+          const fullPath = path.join(storage, httpPath)
+          // else try create a version
+          const basicFullPath = path.join(storage, basicPath)
+          if (!await fs.pathExists(basicFullPath)) {
+            utils.debug('basic file not found', basicPath)
             await next()
           } else {
-            const fullPath = path.join(storage, httpPath)
-            // else try create a version
-            const basicFullPath = path.join(storage, basicPath)
-            if (!await fs.pathExists(basicFullPath)) {
-              utils.debug('basic file not found', basicPath)
-              await next()
-            } else {
-              // validate the authentication
-              validateAuth(ctx, users, 404)
-              // copy file
-              const file = tempy.file({extension: ext})
-              await fs.copy(basicFullPath, file, {overwrite: true})
-              // run transformers
-              const pctx = {file: file, originalFile: basicFullPath}
-              await plugin.runTransformer(modifiers, pctx)
-              await fs.move(pctx.file, fullPath, {overwrite: true})
-              if (!await sendFile(ctx, storage, httpPath)) {
-                ctx.throw(500)
-              }
-              utils.log(`versioned: ${httpPath}`)
+            // validate the authentication
+            validateAuth(ctx, users, 404)
+            // copy file
+            const file = tempy.file({extension: ext})
+            await fs.copy(basicFullPath, file, {overwrite: true})
+            // run transformers
+            const pctx = {file: file, originalFile: basicFullPath}
+            await plugin.runTransformer(modifiers, pctx)
+            await fs.move(pctx.file, fullPath, {overwrite: true})
+            if (!await sendFile(ctx, storage, httpPath)) {
+              ctx.throw(500)
             }
+            utils.log(`versioned: ${httpPath}`)
           }
         }
       }
